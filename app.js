@@ -871,69 +871,70 @@ function Lane(index) {
   }
 }
 
-// ============================
-// БРЕНДИРОВАННЫЙ ИНТЕРФЕЙС
-// ============================
-
 function createToyotaEndScreen() {
   endDOM.innerHTML = `
     <div class="end-content" style="
       background: linear-gradient(135deg, ${TOYOTA_CONFIG.brandColors.secondary}, ${TOYOTA_CONFIG.brandColors.primary});
       border: 4px solid ${TOYOTA_CONFIG.brandColors.accent};
       color: ${TOYOTA_CONFIG.brandColors.accent};
-      padding: 40px;
-      border-radius: 20px;
+      padding: 20px;
+      border-radius: 15px;
       text-align: center;
-      max-width: 500px;
+      max-width: 90%;
       margin: 0 auto;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      overflow-y: auto;
+      max-height: 85vh;
+      font-size: 14px;
     ">
-      <div style="font-size: 36px; margin-bottom: 10px; color: #FFD700;">🏆</div>
-      <h2 style="font-size: 32px; margin-bottom: 20px; text-transform: uppercase;">
+      <div style="font-size: 24px; margin-bottom: 8px; color: #FFD700;">🏆</div>
+      <h2 style="font-size: 20px; margin-bottom: 15px; text-transform: uppercase;">
         Ваш результат: <span id="finalScore">0</span>
       </h2>
       
       <div style="
         background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 30px;
-        border-left: 4px solid ${TOYOTA_CONFIG.brandColors.accent};
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 3px solid ${TOYOTA_CONFIG.brandColors.accent};
       ">
-        <div style="font-size: 24px; margin-bottom: 10px; font-weight: bold;">
+        <div style="font-size: 18px; margin-bottom: 8px; font-weight: bold;">
           ${TOYOTA_CONFIG.brandName}
         </div>
-        <div style="font-size: 18px; margin-bottom: 10px; font-style: italic;">
+        <div style="font-size: 14px; margin-bottom: 8px; font-style: italic;">
           ${TOYOTA_CONFIG.slogan}
         </div>
-        <div style="font-size: 16px; opacity: 0.9;">
+        <div style="font-size: 12px; opacity: 0.9;">
           Автосалон премиум-класса
         </div>
       </div>
       
-      <div style="margin-bottom: 30px; text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
-        <div style="margin-bottom: 10px; font-weight: bold;">Контакты:</div>
-        <div style="margin-bottom: 5px;">📍 г. Москва, ул. Автомобильная, 1</div>
-        <div style="margin-bottom: 5px;">📞 +7 (495) 123-45-67</div>
-        <div style="margin-bottom: 5px;">🌐 www.toyota-demo.ru</div>
+      <div style="margin-bottom: 20px; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; font-size: 12px;">
+        <div style="margin-bottom: 8px; font-weight: bold;">Контакты:</div>
+        <div style="margin-bottom: 4px;">📍 г. Москва, ул. Автомобильная, 1</div>
+        <div style="margin-bottom: 4px;">📞 +7 (495) 123-45-67</div>
+        <div style="margin-bottom: 4px;">🌐 www.toyota-demo.ru</div>
         <div>🕒 Ежедневно 9:00 - 21:00</div>
       </div>
       
-      <div style="margin-bottom: 25px; font-size: 18px;">
+      <div style="margin-bottom: 20px; font-size: 14px;">
         Приходите на тест-драйв и получите<br>
         <span style="color: #FFD700; font-weight: bold;">специальный подарок</span> по промокоду:<br>
         <div style="
           background: ${TOYOTA_CONFIG.brandColors.accent};
           color: ${TOYOTA_CONFIG.brandColors.primary};
-          padding: 10px 20px;
+          padding: 8px 15px;
           border-radius: 5px;
           font-family: monospace;
-          font-size: 22px;
+          font-size: 16px;
           font-weight: bold;
-          margin: 15px auto;
+          margin: 10px auto;
           display: inline-block;
-          letter-spacing: 2px;
+          letter-spacing: 1px;
           border: 2px solid ${TOYOTA_CONFIG.brandColors.primary};
+          word-break: break-all;
+          max-width: 100%;
         " id="promoCode">
           TOYOTA000
         </div>
@@ -943,18 +944,20 @@ function createToyotaEndScreen() {
         background: ${TOYOTA_CONFIG.brandColors.accent};
         color: ${TOYOTA_CONFIG.brandColors.primary};
         border: 2px solid ${TOYOTA_CONFIG.brandColors.primary};
-        padding: 15px 40px;
-        font-size: 18px;
+        padding: 12px 30px;
+        font-size: 16px;
         border-radius: 8px;
         cursor: pointer;
         font-weight: bold;
         transition: all 0.3s;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
+        width: 100%;
+        max-width: 250px;
       " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
         ИГРАТЬ СНОВА
       </button>
       
-      <div style="font-size: 14px; opacity: 0.7; margin-top: 20px;">
+      <div style="font-size: 10px; opacity: 0.7; margin-top: 15px; line-height: 1.4;">
         Демо-версия игры разработана игровой студией<br>
         <span style="font-weight: bold;">GameDev Studio</span> для автосалона ${TOYOTA_CONFIG.brandName}
       </div>
@@ -962,7 +965,6 @@ function createToyotaEndScreen() {
   `;
   bindRetryButton();
 }
-
 // ============================
 // ОБРАБОТЧИКИ СОБЫТИЙ
 // ============================
@@ -1347,3 +1349,4 @@ document.getElementById('startGame').addEventListener('click', () => {
   // Обновляем заголовок страницы
   document.title = `Демо: ${TOYOTA_CONFIG.brandName} Crossing`;
 });
+
