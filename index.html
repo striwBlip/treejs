@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Игра КУРИНЫЙ ПЕРЕХОД<</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+          integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
+  </script>
+</head>
+<body>
+  <header>
+    <h1>КУРИНЫЙ ПЕРЕХОД</h1>
+  </header>
+
+  <!-- Canvas Three.js будет создан здесь -->
+  <main></main>
+
+  <!-- Счетчик -->
+  <div id="counter">0</div>
+
+  <!-- Панель управления -->
+  <div id="controls">
+    <div class="controls-grid">
+      <button id="forward" class="control-btn"></button>
+      <button id="left" class="control-btn"></button>
+      <button id="backward" class="control-btn"></button>
+      <button id="right" class="control-btn"></button>
+    </div>
+    <div class="controls-hint">
+      <br>Используйте
+      <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> или<br>
+      <br>
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+
+      или кнопки выше<br>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Избегайте легковых и грузовых автомобилей! Пересекайте как можно больше полос движения!</p>
+  </footer>
+
+  <!-- Экран окончания игры -->
+  <div id="end">
+    <button id="retry">ПОВТОРИТЬ</button>
+  </div>
+
+  <!-- Основной скрипт игры -->
+  <script src="app.js"></script>
+</body>
+</html>
