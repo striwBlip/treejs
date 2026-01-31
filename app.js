@@ -35,6 +35,8 @@ const positionWidth = 42;
 const columns = 17;
 const boardWidth = positionWidth * columns;
 const stepTime = 200;
+const PW = positionWidth * zoom;
+const HALF_BOARD = boardWidth * zoom / 2;
 
 // Переменные состояния игры
 let gameOver = false;
@@ -90,7 +92,7 @@ const generateLanes = () => {
   return [-9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     .map(index => {
       const lane = new Lane(index);
-      lane.mesh.position.y = index * positionWidth * zoom;
+      lane.mesh.position.y = index * PW;
       scene.add(lane.mesh);
       return lane;
     })
@@ -100,7 +102,7 @@ const generateLanes = () => {
 const addLane = () => {
   const index = lanes.length;
   const lane = new Lane(index);
-  lane.mesh.position.y = index * positionWidth * zoom;
+  lane.mesh.position.y = index * PW;
   scene.add(lane.mesh);
   lanes.push(lane);
 };
@@ -183,35 +185,52 @@ const initaliseValues = () => {
   stepStartTimestamp = null;
   gameOver = false;
 
-  chicken.position.x = 0;
-  chicken.position.y = 0;
-  chicken.position.z = 0;
+  chicken.position.set(0, 0, 0);
+
+  // ===== ОРИЕНТАЦИЯ КАМЕРЫ =====
+  const width = window.innerWidth;
+  const height = window.innerHeight;
 
   camera.position.y = initialCameraPositionY;
   camera.position.x = initialCameraPositionX;
-  camera.position.z = distance;
 
-  dirLight.position.x = initialDirLightPositionX;
-  dirLight.position.y = initialDirLightPositionY;
+  // Если мобильное устройство и вертикальная ориентация — увеличиваем Z, чтобы весь экран поместился
+  if (width < 768 && height > width) { // портрет
+    camera.position.z = distance * (width / height); 
+  } else {
+    camera.position.z = distance;
+  }
+
+  dirLight.position.set(initialDirLightPositionX, initialDirLightPositionY, dirLight.position.z);
 
   counterDOM.innerHTML = currentLane;
-  
+
   // Брендирование счетчика
   counterDOM.style.color = TOYOTA_CONFIG.brandColors.primary;
   counterDOM.style.fontWeight = 'bold';
   counterDOM.style.fontSize = '24px';
   counterDOM.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-  
+
   // Создаем брендированный экран окончания
   createToyotaEndScreen();
-  
+
   endDOM.classList.remove('visible');
   endDOM.style.visibility = 'hidden';
 
-  console.log(`Игра инициализирована - Демо для ${TOYOTA_CONFIG.brandName}`);
+  // ===== УСТАНОВКА РАЗМЕРА RENDERER =====
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
 };
 
-initaliseValues();
+// Слушатель изменения размера
+window.addEventListener('resize', () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+});
 
 // ============================
 // СОЗДАНИЕ РЕНДЕРЕРА
@@ -223,9 +242,27 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+
+initaliseValues();
+
+
+
 // ============================
 // КЛАССЫ ДЛЯ СОЗДАНИЯ ОБЪЕКТОВ
 // ============================
+
+function bindRetryButton() {
+  const retryBtn = document.getElementById('retry');
+  if (!retryBtn) return;
+
+  retryBtn.onclick = () => {
+    lanes.forEach(lane => scene.remove(lane.mesh));
+    initaliseValues();
+    endDOM.classList.remove('visible');
+    endDOM.style.visibility = 'hidden';
+  };
+}
+
 
 function createToyotaAdTexture(text, bgColor = "#FFFFFF", textColor = "#000000") {
   const canvas = document.createElement('canvas');
@@ -562,7 +599,7 @@ function Road() {
   const group = new THREE.Group();
 
   const createPlane = (color) => new THREE.Mesh(
-    new THREE.PlaneBufferGeometry(boardWidth * zoom, positionWidth * zoom),
+    new THREE.PlaneBufferGeometry(boardWidth * zoom, PW),
     new THREE.MeshLambertMaterial({color: color})
   );
 
@@ -585,7 +622,7 @@ function Grass() {
   const group = new THREE.Group();
 
   const createPlane = (color) => new THREE.Mesh(
-    new THREE.BoxBufferGeometry(boardWidth * zoom, positionWidth * zoom, 3 * zoom),
+    new THREE.BoxBufferGeometry(boardWidth * zoom, PW, 3 * zoom),
     new THREE.MeshPhongMaterial({color: color})
   );
 
@@ -605,48 +642,91 @@ function Grass() {
   return group;
 }
 
-function Billboard() {
+function Billboard(messageTexture = null) {
   const group = new THREE.Group();
 
-  // Столб (вертикальный)
+  const CELL_SIZE = positionWidth * zoom; // одна клетка
+
+  // ===== ОСНОВАНИЕ =====
+  const base = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(
+    (positionWidth * zoom * 0.8) , // ширина 0.8
+      2 * zoom,                         // высота
+      (positionWidth * zoom * 0.8)   // глубина 0.8
+    ),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
+  );
+  base.position.y = 1 * zoom;
+  base.receiveShadow = true;
+  group.add(base);
+
+  // ===== БОРТИК =====
+  const border = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(
+      ((positionWidth * zoom * 0.92 * 0.8) ), // ширина 0.8
+      1 * zoom,                                 // высота
+      ((positionWidth * zoom * 0.92 * 0.8) ) // глубина 0.8
+    ),
+    new THREE.MeshLambertMaterial({ color: 0x2e5d2e })
+  );
+  border.position.y = 2.5 * zoom;
+  border.receiveShadow = true;
+  group.add(border);
+
+  // ===== СТОЛБ =====
   const pillar = new THREE.Mesh(
     new THREE.BoxBufferGeometry(3 * zoom, 40 * zoom, 3 * zoom),
     new THREE.MeshLambertMaterial({ color: 0x666666 })
   );
-  pillar.position.y = 20 * zoom;
+  // Столб в центре основания
+  pillar.position.y = 22 * zoom;
+  pillar.position.x = 0;
+  pillar.position.z = 0;
   pillar.castShadow = true;
-  group.add(pillar);
 
-  // Рекламный щит
-  const boardGeometry = new THREE.BoxBufferGeometry(50 * zoom, 30 * zoom, 2 * zoom);
+  const pillarGroup = new THREE.Group();
+  pillarGroup.add(pillar);
+  pillarGroup.name = 'pillar';
+  group.add(pillarGroup);
+
+  // ===== МАТЕРИАЛ ЩИТА =====
   const boardMaterial = new THREE.MeshPhongMaterial({
-    color: 0xffffff
+    color: 0xffffff,
+    map: messageTexture || null
   });
-  const board = new THREE.Mesh(boardGeometry, boardMaterial);
+  if (messageTexture) messageTexture.needsUpdate = true;
 
-  // Поворачиваем щит
+  // ===== ЩИТ =====
+  const board = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(50 * zoom, 30 * zoom, 2 * zoom),
+    boardMaterial
+  );
+  board.name = 'board';
   board.rotation.y = Math.PI / 2;
-  board.position.y = 40 * zoom;
-  board.position.z = 25 * zoom;
+  board.position.y = 57 * zoom; // выше столба
+  board.position.z = 0;         // по центру столба
   board.castShadow = true;
   board.receiveShadow = true;
   group.add(board);
 
-  // Опорные балки
+  // ===== ОПОРНАЯ БАЛКА =====
   const support = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(3 * zoom, 3 * zoom, 30 * zoom),
+    new THREE.BoxBufferGeometry(3 * zoom, 3 * zoom, 50 * zoom),
     new THREE.MeshLambertMaterial({ color: 0x666666 })
   );
-  support.position.y = 25 * zoom;
-  support.position.z = 12 * zoom;
+  support.position.y = 40 * zoom;
+  support.position.z = 0;
   group.add(support);
-  
-  // Поворачиваем всю группу
+
+  // ===== ПОВОРОТ ВСЕЙ КОНСТРУКЦИИ =====
   group.rotation.y = Math.PI / 2;
   group.rotation.z = Math.PI / 2;
-  
+
   return group;
 }
+
+
+
 
 function Lane(index) {
   this.index = index;
@@ -664,62 +744,87 @@ function Lane(index) {
       this.mesh = new Grass();
       this.occupiedPositions = new Set();
       this.trees = [];
+      this.billboardData = null; // Добавляем для хранения данных о билборде
 
+      // Решаем, будет ли рекламный щит (30% шанс)
       const hasBillboard = Math.random() < 0.3 && index > 2;
       let billboardPosition = null;
 
       if (hasBillboard) {
-        billboardPosition = Math.floor(Math.random() * (columns - 2)) + 1;
-        this.occupiedPositions.add(billboardPosition);
+        // Выбираем позицию для щита
+        billboardPosition = Math.floor(Math.random() * columns);
         
-        // Добавляем буферные позиции вокруг щита
-        this.occupiedPositions.add(billboardPosition - 1);
-        this.occupiedPositions.add(billboardPosition + 1);
+        // Занята только позиция СТОЛБА (не весь билборд)
+        // this.occupiedPositions.add(billboardPosition);
+        
 
+        // Создаем щит
         const billboard = new Billboard();
+        
+        // Сохраняем данные о билборде
+        this.billboardData = {
+          position: billboardPosition,
+          pillarPosition: billboardPosition, // Столб занимает эту позицию
+          boardWidth: 50, // Ширина щита в единицах zoom
+          canPassUnder: true // Под щитом можно пройти
+        };
+
+        // Выбираем случайную рекламную текстуру
         const adKeys = Object.keys(adTextures);
         const randomAd = adKeys[Math.floor(Math.random() * adKeys.length)];
-        const boardMesh = billboard.children[1];
 
-        const material = new THREE.MeshPhongMaterial({
-          map: adTextures[randomAd],
-          side: THREE.DoubleSide
-        });
+        // Применяем текстуру к щиту (board - второй элемент после pillar)
+        const boardMesh = billboard.getObjectByName('board'); // Щит
+        
+        if (boardMesh) {
+          boardMesh.material = new THREE.MeshPhongMaterial({
+            map: adTextures[randomAd],
+            side: THREE.DoubleSide
+          });
+        }
 
-        boardMesh.material = material;
-        billboard.position.x = (billboardPosition * positionWidth + positionWidth / 2) * zoom - boardWidth * zoom / 2;
+        billboard.position.x = (billboardPosition * positionWidth + positionWidth / 2) * zoom - HALF_BOARD;
         billboard.position.y = 0;
 
         this.mesh.add(billboard);
         this.billboard = billboard;
         this.trees.push(billboard);
-        activeBillboards.push(billboard);
+        
+        // НЕ добавляем в occupiedPositions позиции слева/справа от столба
+        // Под щитом можно пройти!
       }
 
+      // Создаем деревья (деревья мешают везде)
       const treesNeeded = hasBillboard ? 3 : 4;
+      
       for (let i = 0; i < treesNeeded; i++) {
         let position;
         let attempts = 0;
-        const maxAttempts = 50;
-        
+        const maxAttempts = 100;
+
         do {
           position = Math.floor(Math.random() * columns);
           attempts++;
           if (attempts > maxAttempts) {
-            position = Math.floor(Math.random() * columns);
+            // Ищем первую свободную позицию
+            for (let j = 0; j < columns; j++) {
+              if (!this.occupiedPositions.has(j)) {
+                position = j;
+                break;
+              }
+            }
             break;
           }
-        } while(
-          this.occupiedPositions.has(position) || 
-          (hasBillboard && Math.abs(position - billboardPosition) < 2)
-        );
+        } while(this.occupiedPositions.has(position));
 
         this.occupiedPositions.add(position);
+        
         const tree = new Tree();
-        tree.position.x = (position * positionWidth + positionWidth / 2) * zoom - boardWidth * zoom / 2;
+        tree.position.x = (position * positionWidth + positionWidth / 2) * zoom - HALF_BOARD;
         this.mesh.add(tree);
         this.trees.push(tree);
       }
+      
       break;
 
     case 'car':
@@ -734,7 +839,7 @@ function Lane(index) {
         } while(carPositions.has(position));
 
         carPositions.add(position);
-        car.position.x = (position * positionWidth * 2 + positionWidth / 2) * zoom - boardWidth * zoom / 2;
+        car.position.x = (position * positionWidth * 2 + positionWidth / 2) * zoom - HALF_BOARD;
 
         if(!this.direction) car.rotation.z = Math.PI;
         this.mesh.add(car);
@@ -755,7 +860,7 @@ function Lane(index) {
         } while(truckPositions.has(position));
 
         truckPositions.add(position);
-        truck.position.x = (position * positionWidth * 3 + positionWidth / 2) * zoom - boardWidth * zoom / 2;
+        truck.position.x = (position * positionWidth * 3 + positionWidth / 2) * zoom - HALF_BOARD;
 
         if(!this.direction) truck.rotation.z = Math.PI;
         this.mesh.add(truck);
@@ -855,6 +960,7 @@ function createToyotaEndScreen() {
       </div>
     </div>
   `;
+  bindRetryButton();
 }
 
 // ============================
@@ -906,7 +1012,7 @@ window.addEventListener('keydown', event => {
     move(direction);
     event.preventDefault(); // Предотвращаем стандартное поведение
     
-    console.log(`Нажата клавиша: ${event.key} (код: ${keyCode}), направление: ${direction}`);
+
   }
 });
 // ============================
@@ -914,8 +1020,9 @@ window.addEventListener('keydown', event => {
 // ============================
 
 function move(direction) {
+  // Блокируем управление если игра окончена
   if (gameOver) {
-    console.log("Игра окончена, движение заблокировано");
+
     return;
   }
 
@@ -928,35 +1035,78 @@ function move(direction) {
 
   // Проверка препятствий
   if(direction === 'forward') {
-    if(lanes[newPosition.lane + 1].type === 'forest' &&
-       lanes[newPosition.lane + 1].occupiedPositions.has(newPosition.column)) {
-      console.log("Нельзя идти вперед - дерево!");
-      return;
+    const targetLane = lanes[newPosition.lane + 1];
+    if(!targetLane) return;
+    
+    if(targetLane.type === 'forest') {
+      // Проверяем, есть ли билборд на целевой позиции
+      if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
+
+        return;
+      }
+      
+      // Проверяем обычные деревья
+      if(targetLane.occupiedPositions.has(newPosition.column)) {
+
+        return;
+      }
     }
     if(!stepStartTimestamp) startMoving = true;
     addLane();
+    
   } else if(direction === 'backward') {
     if(newPosition.lane === 0) return;
-    if(lanes[newPosition.lane - 1].type === 'forest' &&
-       lanes[newPosition.lane - 1].occupiedPositions.has(newPosition.column)) {
-      console.log("Нельзя идти назад - дерево!");
-      return;
+    const targetLane = lanes[newPosition.lane - 1];
+    
+    if(targetLane.type === 'forest') {
+      // Проверяем билборд
+      if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
+        return;
+      }
+      
+      if(targetLane.occupiedPositions.has(newPosition.column)) {
+        return;
+      }
     }
     if(!stepStartTimestamp) startMoving = true;
+    
   } else if(direction === 'left') {
     if(newPosition.column === 0) return;
-    if(lanes[newPosition.lane].type === 'forest' &&
-       lanes[newPosition.lane].occupiedPositions.has(newPosition.column - 1)) {
-      console.log("Нельзя идти влево - дерево!");
-      return;
+    const currentLaneObj = lanes[newPosition.lane];
+    
+    if(currentLaneObj.type === 'forest') {
+      // Для движения влево проверяем позицию слева
+      const leftColumn = newPosition.column - 1;
+      
+      // Проверяем билборд
+      if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === leftColumn) {
+        return;
+      }
+      
+      if(currentLaneObj.occupiedPositions.has(leftColumn)) {
+        return;
+      }
     }
     if(!stepStartTimestamp) startMoving = true;
+    
   } else if(direction === 'right') {
     if(newPosition.column === columns - 1) return;
-    if(lanes[newPosition.lane].type === 'forest' &&
-       lanes[newPosition.lane].occupiedPositions.has(newPosition.column + 1)) {
-      console.log("Нельзя идти вправо - дерево!");
-      return;
+    const currentLaneObj = lanes[newPosition.lane];
+    
+    if(currentLaneObj.type === 'forest') {
+      // Для движения вправо проверяем позицию справа
+      const rightColumn = newPosition.column + 1;
+      
+      // Проверяем билборд
+      if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === rightColumn) {
+
+        return;
+      }
+      
+      if(currentLaneObj.occupiedPositions.has(rightColumn)) {
+
+        return;
+      }
     }
     if(!stepStartTimestamp) startMoving = true;
   }
@@ -983,8 +1133,11 @@ function animate(timestamp) {
   // Движение транспорта
   lanes.forEach(lane => {
     if(lane.type === 'car' || lane.type === 'truck') {
-      const leftBound = -boardWidth * zoom / 2 - positionWidth * 2 * zoom;
-      const rightBound = boardWidth * zoom / 2 + positionWidth * 2 * zoom;
+      const carWidth = lane.type === 'car' ? 60 * zoom : 105 * zoom;
+      const extraMargin = carWidth * 2;
+      
+      const leftBound = -HALF_BOARD - extraMargin;
+      const rightBound = HALF_BOARD + extraMargin;
 
       lane.vechicles.forEach(vehicle => {
         if(lane.direction) {
@@ -1007,7 +1160,7 @@ function animate(timestamp) {
 
   if(stepStartTimestamp) {
     const elapsed = timestamp - stepStartTimestamp;
-    const progress = Math.min(elapsed / stepTime, 1) * positionWidth * zoom;
+    const progress = Math.min(elapsed / stepTime, 1) * PW;
     const jumpHeight = Math.sin(Math.pow(elapsed / stepTime, 0.1) * Math.PI) * 8 * zoom;
 
     // Анимация крыльев
@@ -1022,7 +1175,7 @@ function animate(timestamp) {
 
     switch(moves[0]) {
       case 'forward':
-        const forwardY = currentLane * positionWidth * zoom + progress;
+        const forwardY = currentLane * PW + progress;
         camera.position.y = initialCameraPositionY + forwardY;
         dirLight.position.y = initialDirLightPositionY + forwardY;
         chicken.position.y = forwardY;
@@ -1030,7 +1183,7 @@ function animate(timestamp) {
         break;
 
       case 'backward':
-        const backwardY = currentLane * positionWidth * zoom - progress;
+        const backwardY = currentLane * PW - progress;
         camera.position.y = initialCameraPositionY + backwardY;
         dirLight.position.y = initialDirLightPositionY + backwardY;
         chicken.position.y = backwardY;
@@ -1038,7 +1191,7 @@ function animate(timestamp) {
         break;
 
       case 'left':
-        const leftX = (currentColumn * positionWidth + positionWidth / 2) * zoom - boardWidth * zoom / 2 - progress;
+        const leftX = (currentColumn * positionWidth + positionWidth / 2) * zoom - HALF_BOARD - progress;
         camera.position.x = initialCameraPositionX + leftX;
         dirLight.position.x = initialDirLightPositionX + leftX;
         chicken.position.x = leftX;
@@ -1046,7 +1199,7 @@ function animate(timestamp) {
         break;
 
       case 'right':
-        const rightX = (currentColumn * positionWidth + positionWidth / 2) * zoom - boardWidth * zoom / 2 + progress;
+        const rightX = (currentColumn * positionWidth + positionWidth / 2) * zoom - HALF_BOARD + progress;
         camera.position.x = initialCameraPositionX + rightX;
         dirLight.position.x = initialDirLightPositionX + rightX;
         chicken.position.x = rightX;
@@ -1111,7 +1264,6 @@ function animate(timestamp) {
         stepStartTimestamp = null;
         startMoving = false;
 
-        console.log(`Игра окончена! Результат: ${currentLane}. Промокод: ${promoCode}`);
       }
     });
   }
