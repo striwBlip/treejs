@@ -253,7 +253,9 @@ footer p {
   .controls-grid {
     display: grid; /* Показываем кнопки */
   }
-  
+  .controls-hint {
+    display: none; /* Скрываем подсказку */
+  }
   .control-btn {
     width: 65px;
     height: 65px;
@@ -290,6 +292,9 @@ footer p {
   .controls-grid {
     display: grid; /* Показываем кнопки */
   }
+  .controls-hint {
+    display: none; /* Скрываем подсказку */
+  }
   
   .control-btn {
     width: 55px;
@@ -312,3 +317,5 @@ footer p {
     padding: 6px 10px;
   }
 }
+
+
