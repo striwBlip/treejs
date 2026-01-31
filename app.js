@@ -330,16 +330,16 @@ function startGame(demo = false) {
     startAutoMovement();
   }
   
-  console.log('Игра начата. Режим:', isDemoMode ? 'Демо' : 'Ручной');
+
 }
 
 function autoStartGame() {
   if (!gameStarted && !autoStartTimer) {
-    console.log('Автозапуск через ' + (autoStartDelay/1000) + ' секунд...');
+
     
     autoStartTimer = setTimeout(() => {
       if (!gameStarted) {
-        console.log('Автоматический запуск игры...');
+
         
         // Инициализируем игру если нужно
         if (!lanes || !chicken) {
@@ -452,7 +452,7 @@ function tryAlternativeMove() {
   }
   
   // Если совсем некуда двигаться, пробуем подождать
-  console.log('Некуда двигаться, жду...');
+
   return false;
 }
 
@@ -464,7 +464,7 @@ function startAutoMovement() {
   
   // Если игра не начата, не запускаем автоматическое движение
   if (!gameStarted) {
-    console.log('Игра не начата, автоматическое движение не запущено');
+
     return;
   }
   
@@ -482,7 +482,7 @@ function startAutoMovement() {
         const moved = tryAlternativeMove();
         if (!moved) {
           // Если не удалось сдвинуться, ждем дольше
-          console.log('Не удалось найти возможное движение, жду...');
+
           // Можно попробовать ждать подольше
           const longerInterval = Math.random() * 2000 + 2000; // 2-4 секунды
           autoMoveInterval = setTimeout(makeMove, longerInterval);
@@ -500,7 +500,7 @@ function startAutoMovement() {
   const firstInterval = Math.random() * 1000 + 1000;
   autoMoveInterval = setTimeout(makeMove, firstInterval);
   
-  console.log('Автоматическое движение запущено');
+
 }
 
 function simulateKeyPress(key) {
@@ -508,7 +508,7 @@ function simulateKeyPress(key) {
   
   const direction = keyMap[key.toLowerCase()];
   if (direction) {
-    console.log('Автоматическое движение: ' + direction);
+
     move(direction);
   }
 }
@@ -521,12 +521,12 @@ function checkForCollisionAndRestart() {
     if (isDemoMode) {
       // Демо-режим: показываем заставку через 1 секунду
       setTimeout(() => {
-        console.log('Столкновение в демо-режиме - показ заставки...');
+
         resetToStartScreen();
       }, 1000);
     } else {
       // Обычный режим: показываем финальный экран
-      console.log('Столкновение - показ финального экрана');
+
       
       
       // Обновляем данные на финальном экране
@@ -1320,13 +1320,13 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем, есть ли билборд на целевой позиции
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
-        console.log('Не могу двигаться вперед - билборд');
+
         return;
       }
       
       // Проверяем обычные деревья
       if(targetLane.occupiedPositions.has(newPosition.column)) {
-        console.log('Не могу двигаться вперед - дерево');
+
         return;
       }
     }
@@ -1340,12 +1340,12 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем билборд
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
-        console.log('Не могу двигаться назад - билборд');
+
         return;
       }
       
       if(targetLane.occupiedPositions.has(newPosition.column)) {
-        console.log('Не могу двигаться назад - дерево');
+
         return;
       }
     }
@@ -1361,12 +1361,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === leftColumn) {
-        console.log('Не могу двигаться влево - билборд');
+
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(leftColumn)) {
-        console.log('Не могу двигаться влево - дерево');
+
         return;
       }
     }
@@ -1382,12 +1382,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === rightColumn) {
-        console.log('Не могу двигаться вправо - билборд');
+
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(rightColumn)) {
-        console.log('Не могу двигаться вправо - дерево');
+
         return;
       }
     }
@@ -1395,7 +1395,7 @@ function move(direction) {
   }
 
   moves.push(direction);
-  console.log('Движение: ' + direction + ', moves: ' + moves.length);
+
 }
 
 // ============================
@@ -1403,9 +1403,7 @@ function move(direction) {
 // ============================
 
 function resetToStartScreen() {
-  console.log('Возврат к заставке. Причина:', 
-    gameOver ? 'Столкновение' : 
-    'Бездействие (' + (idleTimeout/1000) + ' секунд)');
+
   
   // Останавливаем все таймеры и интервалы
   if (autoMoveInterval) {
@@ -1470,7 +1468,7 @@ function animate(timestamp) {
     // Проверяем время без движения, но только если курица действительно стоит
     // (stepStartTimestamp отсутствует, moves пустой)
     if (currentTime - lastMoveTime > idleTimeout) {
-      console.log('Бездействие более ' + (idleTimeout/1000) + ' секунд - показ заставки');
+
       resetToStartScreen();
       return;
     }
@@ -1782,3 +1780,4 @@ document.addEventListener('DOMContentLoaded', () => {
   
   observer.observe(startScreen, { attributes: true });
 });
+
