@@ -60,6 +60,7 @@ main {
   justify-content: center;
   align-items: center;
 }
+
 canvas {
   width: auto;
   height: 100%; /* Всегда высота экрана */
@@ -196,7 +197,6 @@ footer p {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.8);
   text-align: center;
-  /* УБИРАЕМ text-shadow отсюда */
   background: rgba(0, 0, 0, 0.3);
   padding: 8px 15px;
   border-radius: 10px;
@@ -205,33 +205,49 @@ footer p {
 
 .controls-hint kbd {
   display: inline-block;
-  min-width: 24px; /* Фиксированная ширина для квадрата */
-  height: 24px; /* Фиксированная высота */
+  min-width: 24px;
+  height: 24px;
   background: var(--button-bg);
   color: #333;
-  padding: 0; /* Убираем padding */
+  padding: 0;
   margin: 0 4px;
-  border-radius: 4px; /* Маленькие скругления углов */
+  border-radius: 4px;
   border: 2px solid #666;
   font-size: 0.8em;
   text-align: center;
-  line-height: 24px; /* Центрируем текст по вертикали */
+  line-height: 24px;
   vertical-align: middle;
   text-shadow: none;
   box-shadow: 0 2px 0 #666;
   font-family: 'Press Start 2P', cursive, monospace;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Десктоп: ширина больше 768px - показываем только подсказку */
+@media (min-width: 769px) {
+  .controls-grid {
+    display: none; /* Скрываем кнопки на десктопе */
+  }
+  
+  .controls-hint {
+    font-size: 0.8rem; /* Увеличиваем текст подсказки */
+    padding: 12px 20px;
+  }
+}
+
+/* Планшеты: ширина 481px - 768px - показываем кнопки */
+@media (max-width: 768px) and (min-width: 481px) {
+  .controls-grid {
+    display: grid; /* Показываем кнопки */
+  }
+  
   .control-btn {
-    width: 60px;
-    height: 60px;
+    width: 65px;
+    height: 65px;
   }
 
   .control-btn::before {
-    width: 25px;
-    height: 25px;
+    width: 28px;
+    height: 28px;
   }
 
   #controls {
@@ -241,14 +257,30 @@ footer p {
   }
 }
 
+/* Мобильные: ширина до 480px - показываем кнопки */
 @media (max-width: 480px) {
+  .controls-grid {
+    display: grid; /* Показываем кнопки */
+  }
+  
   .control-btn {
     width: 55px;
     height: 55px;
   }
 
+  .control-btn::before {
+    width: 22px;
+    height: 22px;
+  }
+
   #controls {
     bottom: 65px;
     padding: 12px;
+    gap: 10px;
+  }
+  
+  .controls-hint {
+    font-size: 0.6rem; /* Уменьшаем текст подсказки */
+    padding: 6px 10px;
   }
 }
