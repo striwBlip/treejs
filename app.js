@@ -48,6 +48,20 @@ let startMoving;
 let moves;
 let stepStartTimestamp;
 let activeBillboards = [];
+let isDemoMode = false;
+window.isDemoMode = false
+
+// ПЕРЕМЕННЫЕ ДЛЯ АВТОЗАПУСКА
+// ============================
+
+let gameStarted = false;
+let autoStartTimer = null;
+let autoStartDelay = 5000; // 5 секунд до автозапуска
+let autoMoveCount = 0;
+let autoMoveInterval = null;
+let gameResetPending = false;
+let lastMoveTime = 0;
+let idleTimeout = 10000;
 
 // ============================
 // БРЕНДИРОВАНИЕ TOYOTA
@@ -68,6 +82,20 @@ const TOYOTA_CONFIG = {
 // ============================
 // ТЕКСТУРЫ ДЛЯ ТРАНСПОРТНЫХ СРЕДСТВ
 // ============================
+
+function Texture(width, height, rects) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  rects.forEach(rect => {
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  });
+  return new THREE.CanvasTexture(canvas);
+}
 
 const carFrontTexture = new Texture(40, 80, [{x: 0, y: 10, w: 30, h: 60}]);
 const carBackTexture = new Texture(40, 80, [{x: 10, y: 10, w: 30, h: 60}]);
@@ -107,163 +135,7 @@ const addLane = () => {
   lanes.push(lane);
 };
 
-// Брендированные рекламные текстуры для Toyota
-const adConfigs = [
-  { text: "НОВАЯ\nCAMRY", bg: TOYOTA_CONFIG.brandColors.primary, textColor: TOYOTA_CONFIG.brandColors.accent },
-  { text: "ВНЕДОРОЖНИК\nRAV4", bg: "#000000", textColor: "#FFFFFF" },
-  { text: "СЕМЕЙНАЯ\nCOROLLA", bg: "#1C1C1C", textColor: TOYOTA_CONFIG.brandColors.primary },
-  { text: "МОЩНЫЙ\nHILUX", bg: "#333333", textColor: "#FFD700" },
-  { text: "ГИБРИД\nPRIUS", bg: "#4CAF50", textColor: "#FFFFFF" },
-  { text: "ЛЕГЕНДА\nLAND CRUISER", bg: "#003366", textColor: "#FFFFFF" },
-  { text: "ТЕСТ-ДРАЙВ\nБЕСПЛАТНО", bg: TOYOTA_CONFIG.brandColors.primary, textColor: TOYOTA_CONFIG.brandColors.accent },
-  { text: "СКИДКА\n-15%", bg: TOYOTA_CONFIG.brandColors.primary, textColor: "#FFD700" },
-  { text: TOYOTA_CONFIG.slogan, bg: "#000000", textColor: TOYOTA_CONFIG.brandColors.primary },
-  { text: "ГАРАНТИЯ\n5 ЛЕТ", bg: "#003366", textColor: "#FFFFFF" }
-];
-
-const adTextures = {};
-adConfigs.forEach((config, index) => {
-  adTextures[`ad${index}`] = createToyotaAdTexture(config.text, config.bg, config.textColor);
-});
-
-// ============================
-// СОЗДАНИЕ ОБЪЕКТОВ И ОСВЕЩЕНИЯ
-// ============================
-
-const chicken = new Chicken();
-scene.add(chicken);
-
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
-scene.add(hemiLight);
-
-const initialDirLightPositionX = -100;
-const initialDirLightPositionY = -100;
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-dirLight.position.set(initialDirLightPositionX, initialDirLightPositionY, 200);
-dirLight.castShadow = true;
-dirLight.target = chicken;
-scene.add(dirLight);
-
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
-
-const d = 500;
-dirLight.shadow.camera.left = -d;
-dirLight.shadow.camera.right = d;
-dirLight.shadow.camera.top = d;
-dirLight.shadow.camera.bottom = -d;
-
-const backLight = new THREE.DirectionalLight(0x000000, 0.4);
-backLight.position.set(200, 200, 50);
-backLight.castShadow = true;
-scene.add(backLight);
-
-// Конфигурация игры
-const laneTypes = ['car', 'truck', 'forest'];
-const laneSpeeds = [2, 2.5, 3];
-// Цвета машин в стиле Toyota
-const vechicleColors = [
-  0xEB0A1E, // Красный Toyota
-  0x000000, // Черный
-  0x1C1C1C, // Темно-серый
-  0x003366  // Синий (для гибридов)
-];
-const threeHeights = [20, 45, 60];
-
-// ============================
-// ИНИЦИАЛИЗАЦИЯ ИГРЫ
-// ============================
-
-const initaliseValues = () => {
-  lanes = generateLanes();
-  currentLane = 0;
-  currentColumn = Math.floor(columns / 2);
-  previousTimestamp = null;
-  startMoving = false;
-  moves = [];
-  stepStartTimestamp = null;
-  gameOver = false;
-
-  chicken.position.set(0, 0, 0);
-
-  // ===== ОРИЕНТАЦИЯ КАМЕРЫ =====
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-
-  camera.position.y = initialCameraPositionY;
-  camera.position.x = initialCameraPositionX;
-
-  // Если мобильное устройство и вертикальная ориентация — увеличиваем Z, чтобы весь экран поместился
-  if (width < 768 && height > width) { // портрет
-    camera.position.z = distance * (width / height); 
-  } else {
-    camera.position.z = distance;
-  }
-
-  dirLight.position.set(initialDirLightPositionX, initialDirLightPositionY, dirLight.position.z);
-
-  counterDOM.innerHTML = currentLane;
-
-  // Брендирование счетчика
-  counterDOM.style.color = TOYOTA_CONFIG.brandColors.primary;
-  counterDOM.style.fontWeight = 'bold';
-  counterDOM.style.fontSize = '24px';
-  counterDOM.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-
-  // Создаем брендированный экран окончания
-  createToyotaEndScreen();
-
-  endDOM.classList.remove('visible');
-  endDOM.style.visibility = 'hidden';
-
-  // ===== УСТАНОВКА РАЗМЕРА RENDERER =====
-  renderer.setSize(width, height);
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-};
-
-// Слушатель изменения размера
-window.addEventListener('resize', () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  renderer.setSize(width, height);
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-});
-
-// ============================
-// СОЗДАНИЕ РЕНДЕРЕРА
-// ============================
-
-const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-
-initaliseValues();
-
-
-
-// ============================
-// КЛАССЫ ДЛЯ СОЗДАНИЯ ОБЪЕКТОВ
-// ============================
-
-function bindRetryButton() {
-  const retryBtn = document.getElementById('retry');
-  if (!retryBtn) return;
-
-  retryBtn.onclick = () => {
-    lanes.forEach(lane => scene.remove(lane.mesh));
-    initaliseValues();
-    endDOM.classList.remove('visible');
-    endDOM.style.visibility = 'hidden';
-  };
-}
-
-
+// Вспомогательные функции для создания текстур
 function createToyotaAdTexture(text, bgColor = "#FFFFFF", textColor = "#000000") {
   const canvas = document.createElement('canvas');
   canvas.width = 200;
@@ -369,18 +241,423 @@ function lightenColor(color, percent) {
     (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
 }
 
-function Texture(width, height, rects) {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  rects.forEach(rect => {
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  });
-  return new THREE.CanvasTexture(canvas);
+// Брендированные рекламные текстуры для Toyota
+const adConfigs = [
+  { text: "НОВАЯ\nCAMRY", bg: TOYOTA_CONFIG.brandColors.primary, textColor: TOYOTA_CONFIG.brandColors.accent },
+  { text: "ВНЕДОРОЖНИК\nRAV4", bg: "#000000", textColor: "#FFFFFF" },
+  { text: "СЕМЕЙНАЯ\nCOROLLA", bg: "#1C1C1C", textColor: TOYOTA_CONFIG.brandColors.primary },
+  { text: "МОЩНЫЙ\nHILUX", bg: "#333333", textColor: "#FFD700" },
+  { text: "ГИБРИД\nPRIUS", bg: "#4CAF50", textColor: "#FFFFFF" },
+  { text: "ЛЕГЕНДА\nLAND CRUISER", bg: "#003366", textColor: "#FFFFFF" },
+  { text: "ТЕСТ-ДРАЙВ\nБЕСПЛАТНО", bg: TOYOTA_CONFIG.brandColors.primary, textColor: TOYOTA_CONFIG.brandColors.accent },
+  { text: "СКИДКА\n-15%", bg: TOYOTA_CONFIG.brandColors.primary, textColor: "#FFD700" },
+  { text: TOYOTA_CONFIG.slogan, bg: "#000000", textColor: TOYOTA_CONFIG.brandColors.primary },
+  { text: "ГАРАНТИЯ\n5 ЛЕТ", bg: "#003366", textColor: "#FFFFFF" }
+];
+
+const adTextures = {};
+adConfigs.forEach((config, index) => {
+  adTextures[`ad${index}`] = createToyotaAdTexture(config.text, config.bg, config.textColor);
+});
+
+// ============================
+// СОЗДАНИЕ ОБЪЕКТОВ И ОСВЕЩЕНИЯ
+// ============================
+
+let chicken = null; // Будет создан позже
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+scene.add(hemiLight);
+
+const initialDirLightPositionX = -100;
+const initialDirLightPositionY = -100;
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+dirLight.position.set(initialDirLightPositionX, initialDirLightPositionY, 200);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+
+const d = 500;
+dirLight.shadow.camera.left = -d;
+dirLight.shadow.camera.right = d;
+dirLight.shadow.camera.top = d;
+dirLight.shadow.camera.bottom = -d;
+
+const backLight = new THREE.DirectionalLight(0x000000, 0.4);
+backLight.position.set(200, 200, 50);
+backLight.castShadow = true;
+scene.add(backLight);
+
+// Конфигурация игры
+const laneTypes = ['car', 'truck', 'forest'];
+const laneSpeeds = [2, 2.5, 3];
+// Цвета машин в стиле Toyota
+const vechicleColors = [
+  0xEB0A1E, // Красный Toyota
+  0x000000, // Черный
+  0x1C1C1C, // Темно-серый
+  0x003366  // Синий (для гибридов)
+];
+const threeHeights = [20, 45, 60];
+
+// ============================
+// ФУНКЦИИ АВТОЗАПУСКА И АВТОМАТИЧЕСКОЙ ИГРЫ
+// ============================
+
+function startGame(demo = false) {
+  if (gameStarted) return;
+  
+  // Устанавливаем режим
+  isDemoMode = demo;
+  window.isDemoMode = demo; // Делаем глобально доступной
+  
+  gameStarted = true;
+  lastMoveTime = Date.now();
+  if (startScreen) startScreen.style.display = 'none';
+  document.title = `Демо: ${TOYOTA_CONFIG.brandName} Crossing`;
+  
+  // Очищаем таймер автозапуска, если он был
+  if (autoStartTimer) {
+    clearTimeout(autoStartTimer);
+    autoStartTimer = null;
+  }
+  
+  // Запускаем автоматическое движение ТОЛЬКО в демо-режиме
+  if (isDemoMode) {
+    startAutoMovement();
+  }
+  
+  console.log('Игра начата. Режим:', isDemoMode ? 'Демо' : 'Ручной');
+}
+
+function autoStartGame() {
+  if (!gameStarted && !autoStartTimer) {
+    console.log('Автозапуск через ' + (autoStartDelay/1000) + ' секунд...');
+    
+    autoStartTimer = setTimeout(() => {
+      if (!gameStarted) {
+        console.log('Автоматический запуск игры...');
+        
+        // Инициализируем игру если нужно
+        if (!lanes || !chicken) {
+          initaliseValues();
+        }
+        
+        startGame(true); // true = демо-режим
+        
+        // Имитируем нажатие W для начала движения
+        setTimeout(() => {
+          simulateKeyPress('w');
+        }, 500);
+      }
+    }, autoStartDelay);
+  }
+}
+
+function canMoveForward() {
+  if (currentLane >= lanes.length - 3) {
+    return false; // Достигли конца дороги
+  }
+  
+  const targetLane = lanes[currentLane + 1];
+  if (!targetLane) return false;
+  
+  // Проверяем препятствия на целевой полосе
+  if (targetLane.type === 'forest') {
+    // Проверяем билборд
+    if (targetLane.billboardData && targetLane.billboardData.pillarPosition === currentColumn) {
+      return false;
+    }
+    
+    // Проверяем деревья
+    if (targetLane.occupiedPositions.has(currentColumn)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+// Функция попытки альтернативного движения
+function tryAlternativeMove() {
+  const possibleMoves = [];
+  
+  
+  
+  // Проверяем можно ли двигаться влево
+  if (currentColumn > 0) {
+    const currentLaneObj = lanes[currentLane];
+    let canMoveLeft = true;
+    
+    if (currentLaneObj.type === 'forest') {
+      const leftColumn = currentColumn - 1;
+      if (currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === leftColumn) {
+        canMoveLeft = false;
+      }
+      if (currentLaneObj.occupiedPositions.has(leftColumn)) {
+        canMoveLeft = false;
+      }
+    }
+    
+    if (canMoveLeft) {
+      possibleMoves.push('left');
+    }
+  }
+  
+  // Проверяем можно ли двигаться вправо
+  if (currentColumn < columns - 1) {
+    const currentLaneObj = lanes[currentLane];
+    let canMoveRight = true;
+    
+    if (currentLaneObj.type === 'forest') {
+      const rightColumn = currentColumn + 1;
+      if (currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === rightColumn) {
+        canMoveRight = false;
+      }
+      if (currentLaneObj.occupiedPositions.has(rightColumn)) {
+        canMoveRight = false;
+      }
+    }
+    
+    if (canMoveRight) {
+      possibleMoves.push('right');
+    }
+  }
+  
+  // Если есть возможные движения, выбираем случайное
+  if (possibleMoves.length > 0) {
+    const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+    let keyToPress;
+    
+    switch(randomMove) {
+      case 'backward':
+        keyToPress = 's';
+        break;
+      case 'left':
+        keyToPress = 'a';
+        break;
+      case 'right':
+        keyToPress = 'd';
+        break;
+    }
+    
+    if (keyToPress) {
+      simulateKeyPress(keyToPress);
+      lastMoveTime = Date.now();
+      return true;
+    }
+  }
+  
+  // Если совсем некуда двигаться, пробуем подождать
+  console.log('Некуда двигаться, жду...');
+  return false;
+}
+
+
+function startAutoMovement() {
+  if (autoMoveInterval) {
+    clearTimeout(autoMoveInterval);
+  }
+  
+  // Если игра не начата, не запускаем автоматическое движение
+  if (!gameStarted) {
+    console.log('Игра не начата, автоматическое движение не запущено');
+    return;
+  }
+  
+  const makeMove = () => {
+    if (gameStarted && !gameOver && moves.length === 0) {
+      // Проверяем, можно ли двигаться вперед
+      if (canMoveForward()) {
+        // Автоматически двигаем курицу вперед
+        simulateKeyPress('w');
+        autoMoveCount++;
+        // Обновляем время при автоматическом движении
+        lastMoveTime = Date.now();
+      } else {
+        // Если нельзя вперед, пробуем альтернативные движения
+        const moved = tryAlternativeMove();
+        if (!moved) {
+          // Если не удалось сдвинуться, ждем дольше
+          console.log('Не удалось найти возможное движение, жду...');
+          // Можно попробовать ждать подольше
+          const longerInterval = Math.random() * 2000 + 2000; // 2-4 секунды
+          autoMoveInterval = setTimeout(makeMove, longerInterval);
+          return;
+        }
+      }
+    }
+    
+    // Устанавливаем следующий интервал случайно от 1 до 2 секунд
+    const nextInterval = Math.random() * 1000 + 1000; // от 1000ms до 2000ms
+    autoMoveInterval = setTimeout(makeMove, nextInterval);
+  };
+  
+  // Запускаем первый раз через случайный интервал
+  const firstInterval = Math.random() * 1000 + 1000;
+  autoMoveInterval = setTimeout(makeMove, firstInterval);
+  
+  console.log('Автоматическое движение запущено');
+}
+
+function simulateKeyPress(key) {
+  if (gameOver || moves.length > 0 || !gameStarted) return;
+  
+  const direction = keyMap[key.toLowerCase()];
+  if (direction) {
+    console.log('Автоматическое движение: ' + direction);
+    move(direction);
+  }
+}
+
+function checkForCollisionAndRestart() {
+  if (gameOver && !gameResetPending) {
+    gameResetPending = true;
+    
+    // В ДЕМО-РЕЖИМЕ показываем заставку, в ОБЫЧНОМ режиме - финальный экран
+    if (isDemoMode) {
+      // Демо-режим: показываем заставку через 1 секунду
+      setTimeout(() => {
+        console.log('Столкновение в демо-режиме - показ заставки...');
+        resetToStartScreen();
+      }, 1000);
+    } else {
+      // Обычный режим: показываем финальный экран
+      console.log('Столкновение - показ финального экрана');
+      
+      
+      // Обновляем данные на финальном экране
+      document.getElementById('finalScore').textContent = currentLane;
+      const promoCode = `TOYOTA${currentLane.toString().padStart(3, '0')}`;
+      document.getElementById('promoCode').textContent = promoCode;
+      
+      // Показываем финальный экран
+      endDOM.classList.add('visible');
+      endDOM.style.visibility = 'visible';
+      
+      // Останавливаем автоматическое движение (если было)
+      if (autoMoveInterval) {
+        clearTimeout(autoMoveInterval);
+        autoMoveInterval = null;
+      }
+    }
+  }
+}
+
+// ============================
+// ИНИЦИАЛИЗАЦИЯ ИГРЫ
+// ============================
+
+const initaliseValues = () => {
+  // Удаляем старую курицу, если она есть
+  if (chicken) {
+    scene.remove(chicken);
+  }
+  
+  // Создаем новую курицу
+  chicken = new Chicken();
+  scene.add(chicken);
+  dirLight.target = chicken;
+  
+  lanes = generateLanes();
+  currentLane = 0;
+  currentColumn = Math.floor(columns / 2);
+  previousTimestamp = null;
+  startMoving = false;
+  moves = [];
+  stepStartTimestamp = null;
+  gameOver = false;
+  gameResetPending = false;
+  autoMoveCount = 0;
+
+  chicken.position.set(0, 0, 0);
+
+  // ===== ОРИЕНТАЦИЯ КАМЕРЫ =====
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  camera.position.y = initialCameraPositionY;
+  camera.position.x = initialCameraPositionX;
+
+  // Если мобильное устройство и вертикальная ориентация — увеличиваем Z, чтобы весь экран поместился
+  if (width < 768 && height > width) { // портрет
+    camera.position.z = distance * (width / height); 
+  } else {
+    camera.position.z = distance;
+  }
+
+  dirLight.position.set(initialDirLightPositionX, initialDirLightPositionY, dirLight.position.z);
+
+  counterDOM.innerHTML = currentLane;
+
+  // Брендирование счетчика
+  counterDOM.style.color = TOYOTA_CONFIG.brandColors.primary;
+  counterDOM.style.fontWeight = 'bold';
+  counterDOM.style.fontSize = '24px';
+  counterDOM.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+
+  // Создаем брендированный экран окончания
+  createToyotaEndScreen();
+
+  endDOM.classList.remove('visible');
+  endDOM.style.visibility = 'hidden';
+  lastMoveTime = Date.now();
+
+  // ===== УСТАНОВКА РАЗМЕРА RENDERER =====
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+};
+
+// ============================
+// СОЗДАНИЕ РЕНДЕРЕРА
+// ============================
+
+const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// ============================
+// КЛАССЫ ДЛЯ СОЗДАНИЯ ОБЪЕКТОВ
+// ============================
+
+function bindRetryButton() {
+  const retryBtn = document.getElementById('retry');
+  if (!retryBtn) return;
+
+  retryBtn.onclick = () => {
+    // Останавливаем автоматическое движение
+    if (autoMoveInterval) {
+      clearTimeout(autoMoveInterval);
+      autoMoveInterval = null;
+    }
+    
+    lanes.forEach(lane => scene.remove(lane.mesh));
+    initaliseValues();
+    endDOM.classList.remove('visible');
+    endDOM.style.visibility = 'hidden';
+    
+    // Сброс состояния игры
+    gameOver = false;
+    gameStarted = false;
+    gameResetPending = false;
+    
+    if (isDemoMode) {
+      // В демо-режиме показываем стартовый экран
+      if (startScreen) startScreen.style.display = 'flex';
+      // Запускаем таймер автозапуска
+      autoStartGame();
+    } else {
+      // В обычном режиме показываем стартовый экран
+      if (startScreen) startScreen.style.display = 'flex';
+      // НЕ запускаем автоматически - ждем действия пользователя
+    }
+  };
 }
 
 function Wheel() {
@@ -650,7 +927,7 @@ function Billboard(messageTexture = null) {
   // ===== ОСНОВАНИЕ =====
   const base = new THREE.Mesh(
     new THREE.BoxBufferGeometry(
-    (positionWidth * zoom * 0.8) , // ширина 0.8
+      (positionWidth * zoom * 0.8), // ширина 0.8
       2 * zoom,                         // высота
       (positionWidth * zoom * 0.8)   // глубина 0.8
     ),
@@ -663,9 +940,9 @@ function Billboard(messageTexture = null) {
   // ===== БОРТИК =====
   const border = new THREE.Mesh(
     new THREE.BoxBufferGeometry(
-      ((positionWidth * zoom * 0.92 * 0.8) ), // ширина 0.8
+      ((positionWidth * zoom * 0.92 * 0.8)), // ширина 0.8
       1 * zoom,                                 // высота
-      ((positionWidth * zoom * 0.92 * 0.8) ) // глубина 0.8
+      ((positionWidth * zoom * 0.92 * 0.8)) // глубина 0.8
     ),
     new THREE.MeshLambertMaterial({ color: 0x2e5d2e })
   );
@@ -725,9 +1002,6 @@ function Billboard(messageTexture = null) {
   return group;
 }
 
-
-
-
 function Lane(index) {
   this.index = index;
   this.type = index <= 0 ? 'field' : laneTypes[Math.floor(Math.random() * laneTypes.length)];
@@ -755,8 +1029,13 @@ function Lane(index) {
         billboardPosition = Math.floor(Math.random() * columns);
         
         // Занята только позиция СТОЛБА (не весь билборд)
-        // this.occupiedPositions.add(billboardPosition);
-        
+        this.occupiedPositions.add(billboardPosition);
+        if (billboardPosition > 0) {
+          this.occupiedPositions.add(billboardPosition - 1);
+        }
+        if (billboardPosition < columns - 1) {
+          this.occupiedPositions.add(billboardPosition + 1);
+        }
 
         // Создаем щит
         const billboard = new Billboard();
@@ -831,7 +1110,16 @@ function Lane(index) {
       this.mesh = new Road();
       this.direction = Math.random() >= 0.5;
       const carPositions = new Set();
-      this.vechicles = [1, 2, 3].map(() => {
+      
+      // Определяем количество машин в зависимости от режима
+      let carCountArray;
+      if (isDemoMode) {
+        carCountArray = [1]; // Мало машин в демо-режиме
+      } else {
+        carCountArray = [1, 2, 3]; // Больше машин в обычном режиме
+      }
+      
+      this.vechicles = carCountArray.map(() => {
         const car = new Car();
         let position;
         do {
@@ -852,7 +1140,16 @@ function Lane(index) {
       this.mesh = new Road();
       this.direction = Math.random() >= 0.5;
       const truckPositions = new Set();
-      this.vechicles = [1, 2].map(() => {
+      
+      // Определяем количество грузовиков в зависимости от режима
+      let truckCountArray;
+      if (isDemoMode) {
+        truckCountArray = [1]; // 1 грузовик в демо-режиме
+      } else {
+        truckCountArray = [1, 2]; // 2 грузовика в обычном режиме
+      }
+      
+      this.vechicles = truckCountArray.map(() => {
         const truck = new Truck();
         let position;
         do {
@@ -870,6 +1167,10 @@ function Lane(index) {
       break;
   }
 }
+
+// ============================
+// БРЕНДИРОВАННЫЙ ИНТЕРФЕЙС
+// ============================
 
 function createToyotaEndScreen() {
   endDOM.innerHTML = `
@@ -965,21 +1266,10 @@ function createToyotaEndScreen() {
   `;
   bindRetryButton();
 }
+
 // ============================
 // ОБРАБОТЧИКИ СОБЫТИЙ
 // ============================
-
-document.querySelector('#retry').addEventListener('click', () => {
-  lanes.forEach(lane => scene.remove(lane.mesh));
-  initaliseValues();
-  endDOM.classList.remove('visible');
-  endDOM.style.visibility = 'hidden';
-});
-
-document.getElementById('forward').addEventListener('click', () => move('forward'));
-document.getElementById('backward').addEventListener('click', () => move('backward'));
-document.getElementById('left').addEventListener('click', () => move('left'));
-document.getElementById('right').addEventListener('click', () => move('right'));
 
 const keyMap = {
   // Вперед
@@ -1004,19 +1294,6 @@ const keyMap = {
   '39': 'right'
 };
 
-window.addEventListener('keydown', event => {
-  const key = event.key.toLowerCase();
-  const keyCode = event.keyCode.toString();
-  
-  // Проверяем все возможные варианты
-  if (keyMap[key] || keyMap[keyCode]) {
-    const direction = keyMap[key] || keyMap[keyCode];
-    move(direction);
-    event.preventDefault(); // Предотвращаем стандартное поведение
-    
-
-  }
-});
 // ============================
 // ЛОГИКА ДВИЖЕНИЯ КУРИЦЫ
 // ============================
@@ -1024,9 +1301,9 @@ window.addEventListener('keydown', event => {
 function move(direction) {
   // Блокируем управление если игра окончена
   if (gameOver) {
-
     return;
   }
+  lastMoveTime = Date.now();
 
   const newPosition = moves.reduce((pos, moveDir) => {
     if(moveDir === 'forward') return {lane: pos.lane + 1, column: pos.column};
@@ -1043,13 +1320,13 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем, есть ли билборд на целевой позиции
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
-
+        console.log('Не могу двигаться вперед - билборд');
         return;
       }
       
       // Проверяем обычные деревья
       if(targetLane.occupiedPositions.has(newPosition.column)) {
-
+        console.log('Не могу двигаться вперед - дерево');
         return;
       }
     }
@@ -1063,10 +1340,12 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем билборд
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
+        console.log('Не могу двигаться назад - билборд');
         return;
       }
       
       if(targetLane.occupiedPositions.has(newPosition.column)) {
+        console.log('Не могу двигаться назад - дерево');
         return;
       }
     }
@@ -1082,10 +1361,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === leftColumn) {
+        console.log('Не могу двигаться влево - билборд');
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(leftColumn)) {
+        console.log('Не могу двигаться влево - дерево');
         return;
       }
     }
@@ -1101,12 +1382,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === rightColumn) {
-
+        console.log('Не могу двигаться вправо - билборд');
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(rightColumn)) {
-
+        console.log('Не могу двигаться вправо - дерево');
         return;
       }
     }
@@ -1114,18 +1395,85 @@ function move(direction) {
   }
 
   moves.push(direction);
+  console.log('Движение: ' + direction + ', moves: ' + moves.length);
 }
 
 // ============================
 // ГЛАВНЫЙ ЦИКЛ АНИМАЦИИ
 // ============================
 
+function resetToStartScreen() {
+  console.log('Возврат к заставке. Причина:', 
+    gameOver ? 'Столкновение' : 
+    'Бездействие (' + (idleTimeout/1000) + ' секунд)');
+  
+  // Останавливаем все таймеры и интервалы
+  if (autoMoveInterval) {
+    clearTimeout(autoMoveInterval);
+    autoMoveInterval = null;
+  }
+  
+  if (autoStartTimer) {
+    clearTimeout(autoStartTimer);
+    autoStartTimer = null;
+  }
+  
+  // Сбрасываем состояние
+  gameOver = false;
+  gameStarted = false;
+  gameResetPending = false;
+  moves = [];
+  stepStartTimestamp = null;
+  startMoving = false;
+  
+  // Скрываем финальный экран (если он был показан)
+  endDOM.classList.remove('visible');
+  endDOM.style.visibility = 'hidden';
+  
+  // Очищаем сцену
+  if (lanes) {
+    lanes.forEach(lane => scene.remove(lane.mesh));
+  }
+  
+  // Переинициализируем игру
+  initaliseValues();
+  
+  // Показываем стартовый экран
+  if (startScreen) startScreen.style.display = 'flex';
+  
+  // Если был демо-режим, запускаем таймер автозапуска
+  if (isDemoMode) {
+    autoStartGame();
+  }
+  // Сбрасываем режим ТОЛЬКО если причина - бездействие
+  if (!gameOver) {
+    isDemoMode = false;
+    window.isDemoMode = false;
+  }
+}
+
 function animate(timestamp) {
   requestAnimationFrame(animate);
+  if (!lanes || !chicken) {
+    renderer.render(scene, camera);
+    return;
+  }
 
   if (gameOver) {
     renderer.render(scene, camera);
     return;
+  }
+
+  if (gameStarted && !gameOver && moves.length === 0 && !stepStartTimestamp) {
+    const currentTime = Date.now();
+    
+    // Проверяем время без движения, но только если курица действительно стоит
+    // (stepStartTimestamp отсутствует, moves пустой)
+    if (currentTime - lastMoveTime > idleTimeout) {
+      console.log('Бездействие более ' + (idleTimeout/1000) + ' секунд - показ заставки');
+      resetToStartScreen();
+      return;
+    }
   }
 
   if(!previousTimestamp) previousTimestamp = timestamp;
@@ -1232,7 +1580,7 @@ function animate(timestamp) {
   }
 
   // ПРОВЕРКА СТОЛКНОВЕНИЙ С МАШИНАМИ
-  if(lanes[currentLane].type === 'car' || lanes[currentLane].type === 'truck') {
+  if(lanes[currentLane] && (lanes[currentLane].type === 'car' || lanes[currentLane].type === 'truck')) {
     const chickenX = chicken.position.x;
     const chickenZ = chicken.position.z;
     const chickenHalfWidth = chickenSize * zoom / 2;
@@ -1254,27 +1602,32 @@ function animate(timestamp) {
       if (collisionX && collisionZ) {
         gameOver = true;
         
-        // Обновляем финальный экран
-        document.getElementById('finalScore').textContent = currentLane;
-        const promoCode = `TOYOTA${currentLane.toString().padStart(3, '0')}`;
-        document.getElementById('promoCode').textContent = promoCode;
+        // Останавливаем автоматическое движение
+        if (autoMoveInterval) {
+          clearTimeout(autoMoveInterval); 
+          autoMoveInterval = null;
+        }
         
-        endDOM.classList.add('visible');
-        endDOM.style.visibility = 'visible';
+        // // Обновляем финальный экран
+        // document.getElementById('finalScore').textContent = currentLane;
+        // const promoCode = `TOYOTA${currentLane.toString().padStart(3, '0')}`;
+        // document.getElementById('promoCode').textContent = promoCode;
+        
+        // endDOM.classList.add('visible');
+        // endDOM.style.visibility = 'visible';
 
         moves = [];
         stepStartTimestamp = null;
         startMoving = false;
-
+        
+        // Запускаем проверку для автоматического перезапуска
+        checkForCollisionAndRestart();
       }
     });
   }
-
+  
   renderer.render(scene, camera);
 }
-
-// Запуск игры
-requestAnimationFrame(animate);
 
 // Адаптация к размеру окна
 window.addEventListener('resize', () => {
@@ -1345,9 +1698,87 @@ document.body.appendChild(startScreen);
 
 // Обработчик старта игры
 document.getElementById('startGame').addEventListener('click', () => {
-  startScreen.style.display = 'none';
-  // Обновляем заголовок страницы
-  document.title = `Демо: ${TOYOTA_CONFIG.brandName} Crossing`;
+  startGame(false); // false = не демо-режим
 });
 
+// Клик по окну рендерера для запуска игры
+renderer.domElement.addEventListener('click', () => {
+  if (!gameStarted && startScreen.style.display !== 'none') {
+    startGame(false);
+  }
+});
 
+// Клик по стартовому экрану в любом месте
+startScreen.addEventListener('click', (e) => {
+  // Проверяем, что клик не по кнопке Start (она обрабатывается отдельно)
+  if (e.target.id !== 'startGame' && !e.target.closest('#startGame')) {
+    startGame(false);
+  }
+});
+
+// Обработчики кнопок управления
+if (document.getElementById('forward')) {
+  document.getElementById('forward').addEventListener('click', () => move('forward'));
+}
+if (document.getElementById('backward')) {
+  document.getElementById('backward').addEventListener('click', () => move('backward'));
+}
+if (document.getElementById('left')) {
+  document.getElementById('left').addEventListener('click', () => move('left'));
+}
+if (document.getElementById('right')) {
+  document.getElementById('right').addEventListener('click', () => move('right'));
+}
+
+// Обработчик клавиатуры
+window.addEventListener('keydown', event => {
+  const key = event.key.toLowerCase();
+  const keyCode = event.keyCode.toString();
+  
+  // Проверяем все возможные варианты
+  if (keyMap[key] || keyMap[keyCode]) {
+    const direction = keyMap[key] || keyMap[keyCode];
+    move(direction);
+    event.preventDefault(); // Предотвращаем стандартное поведение
+  }
+});
+
+// Слушатель изменения размера окна
+window.addEventListener('resize', () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+});
+
+// Запуск игры после инициализации
+setTimeout(() => {
+  initaliseValues();
+  
+  // Показываем стартовый экран
+  if (startScreen) startScreen.style.display = 'flex';
+  
+  // Запускаем таймер автозапуска
+  setTimeout(() => {
+    autoStartGame();
+  }, 1000);
+  
+  requestAnimationFrame(animate);
+}, 100);
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'style') {
+        const displayStyle = startScreen.style.display;
+        if (displayStyle !== 'none' && !gameStarted) {
+          autoStartGame();
+        }
+      }
+    });
+  });
+  
+  observer.observe(startScreen, { attributes: true });
+});
