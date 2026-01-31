@@ -56,6 +56,15 @@ main {
   width: 100%;
   height: 100%;
   z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+canvas {
+  width: auto;
+  height: 100%; /* Всегда высота экрана */
+  max-width: 100%;
+  display: block;
 }
 
 /* Footer */
