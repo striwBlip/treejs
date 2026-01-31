@@ -38,6 +38,16 @@ const stepTime = 200;
 const PW = positionWidth * zoom;
 const HALF_BOARD = boardWidth * zoom / 2;
 
+const CHICKEN = {
+  BODY: { SIZE: 15, DEPTH: 18 },       // тело кубическое 15x15, глубина 20
+  HEAD: { SIZE: 8 },                   // голова чуть меньше тела
+  COMB: { WIDTH: 8, HEIGHT: 1.5, DEPTH: 3, X: 0, Y: 1 },  // гребень над головой
+  BEAK: { WIDTH: 2, HEIGHT: 8, DEPTH: 2, X: 0, Y: 0 },     // клюв спереди головы
+  LEFT_WING: { WIDTH: 8, HEIGHT: 2, DEPTH: 4, X: -8, Y: -2, Z: 10, ROT_Z: 0.3 },
+  RIGHT_WING: { WIDTH: 8, HEIGHT: 2, DEPTH: 4, X: 8, Y: -2, Z: 10, ROT_Z: -0.3 },
+  TAIL: { WIDTH: 4, HEIGHT: 6, DEPTH: 6, X: 0, Y: -6, Z: 4 }
+};
+
 // Переменные состояния игры
 let gameOver = false;
 let lanes;
@@ -330,16 +340,16 @@ function startGame(demo = false) {
     startAutoMovement();
   }
   
-
+  console.log('Игра начата. Режим:', isDemoMode ? 'Демо' : 'Ручной');
 }
 
 function autoStartGame() {
   if (!gameStarted && !autoStartTimer) {
-
+    console.log('Автозапуск через ' + (autoStartDelay/1000) + ' секунд...');
     
     autoStartTimer = setTimeout(() => {
       if (!gameStarted) {
-
+        console.log('Автоматический запуск игры...');
         
         // Инициализируем игру если нужно
         if (!lanes || !chicken) {
@@ -433,9 +443,6 @@ function tryAlternativeMove() {
     let keyToPress;
     
     switch(randomMove) {
-      case 'backward':
-        keyToPress = 's';
-        break;
       case 'left':
         keyToPress = 'a';
         break;
@@ -452,7 +459,7 @@ function tryAlternativeMove() {
   }
   
   // Если совсем некуда двигаться, пробуем подождать
-
+  console.log('Некуда двигаться, жду...');
   return false;
 }
 
@@ -464,7 +471,7 @@ function startAutoMovement() {
   
   // Если игра не начата, не запускаем автоматическое движение
   if (!gameStarted) {
-
+    console.log('Игра не начата, автоматическое движение не запущено');
     return;
   }
   
@@ -482,7 +489,7 @@ function startAutoMovement() {
         const moved = tryAlternativeMove();
         if (!moved) {
           // Если не удалось сдвинуться, ждем дольше
-
+          console.log('Не удалось найти возможное движение, жду...');
           // Можно попробовать ждать подольше
           const longerInterval = Math.random() * 2000 + 2000; // 2-4 секунды
           autoMoveInterval = setTimeout(makeMove, longerInterval);
@@ -500,7 +507,7 @@ function startAutoMovement() {
   const firstInterval = Math.random() * 1000 + 1000;
   autoMoveInterval = setTimeout(makeMove, firstInterval);
   
-
+  console.log('Автоматическое движение запущено');
 }
 
 function simulateKeyPress(key) {
@@ -508,7 +515,7 @@ function simulateKeyPress(key) {
   
   const direction = keyMap[key.toLowerCase()];
   if (direction) {
-
+    console.log('Автоматическое движение: ' + direction);
     move(direction);
   }
 }
@@ -521,12 +528,12 @@ function checkForCollisionAndRestart() {
     if (isDemoMode) {
       // Демо-режим: показываем заставку через 1 секунду
       setTimeout(() => {
-
+        console.log('Столкновение в демо-режиме - показ заставки...');
         resetToStartScreen();
       }, 1000);
     } else {
       // Обычный режим: показываем финальный экран
-
+      console.log('Столкновение - показ финального экрана');
       
       
       // Обновляем данные на финальном экране
@@ -608,7 +615,10 @@ const initaliseValues = () => {
 
   // ===== УСТАНОВКА РАЗМЕРА RENDERER =====
   renderer.setSize(width, height);
-  camera.aspect = width / height;
+  camera.left   = -width / 2;
+  camera.right  =  width / 2;
+  camera.top    =  height / 2;
+  camera.bottom = -height / 2;
   camera.updateProjectionMatrix();
 };
 
@@ -791,86 +801,85 @@ function Tree() {
   return group;
 }
 
+
 function Chicken() {
   const group = new THREE.Group();
 
   // Тело
   const body = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(chickenSize * zoom, chickenSize * zoom, 20 * zoom),
-    new THREE.MeshLambertMaterial({color: 0xffffff})
+    new THREE.BoxBufferGeometry(CHICKEN.BODY.SIZE * zoom, CHICKEN.BODY.SIZE * zoom, CHICKEN.BODY.DEPTH * zoom),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
   );
-  body.position.z = 10 * zoom;
-  body.castShadow = true;
-  body.receiveShadow = true;
+  body.position.set(0, 0, CHICKEN.BODY.DEPTH / 2 * zoom);
   group.add(body);
 
   // Голова
   const head = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(2 * zoom, 4 * zoom, 2 * zoom),
-    new THREE.MeshPhongMaterial({color: 0xf0619a})
+    new THREE.BoxBufferGeometry(CHICKEN.HEAD.SIZE * zoom, CHICKEN.HEAD.SIZE * zoom, CHICKEN.HEAD.SIZE * zoom),
+    new THREE.MeshPhongMaterial({ color: 0xffffff })
   );
-  head.position.z = 21 * zoom;
-  head.castShadow = true;
-  head.receiveShadow = false;
+  head.position.set(
+    0, // X по центру
+    CHICKEN.BODY.SIZE / 4 * zoom + CHICKEN.HEAD.SIZE / 2 * zoom, // чуть выше тела
+    body.position.z + CHICKEN.BODY.DEPTH / 2 * zoom + CHICKEN.HEAD.SIZE / 2 * zoom // спереди тела
+  );
   group.add(head);
 
   // Гребень
   const comb = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(2 * zoom, 1 * zoom, 3 * zoom),
-    new THREE.MeshPhongMaterial({color: 0xff0000})
+    new THREE.BoxBufferGeometry(CHICKEN.COMB.WIDTH * zoom, CHICKEN.COMB.HEIGHT * zoom, CHICKEN.COMB.DEPTH * zoom),
+    new THREE.MeshPhongMaterial({ color: 0xf0619a })
   );
-  comb.position.y = 2 * zoom;
-  comb.position.z = 22 * zoom;
+  comb.position.set(
+    CHICKEN.COMB.X * zoom,
+    head.position.y + CHICKEN.HEAD.SIZE / 2 * zoom + CHICKEN.COMB.HEIGHT / 2 * zoom,
+    head.position.z
+  );
   group.add(comb);
 
   // Клюв
   const beak = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(1 * zoom, 0.5 * zoom, 1.5 * zoom),
-    new THREE.MeshPhongMaterial({color: 0xFFA500})
+    new THREE.BoxBufferGeometry(CHICKEN.BEAK.WIDTH * zoom, CHICKEN.BEAK.HEIGHT * zoom, CHICKEN.BEAK.DEPTH * zoom),
+    new THREE.MeshPhongMaterial({ color: 0xFFA500 })
   );
-  beak.position.z = 22 * zoom;
-  beak.position.x = 1 * zoom;
+  beak.position.set(
+    CHICKEN.BEAK.X * zoom,
+    head.position.y,
+    head.position.z + CHICKEN.HEAD.SIZE / 2 * zoom + CHICKEN.BEAK.DEPTH / 2 * zoom
+  );
   group.add(beak);
 
   // Левое крыло
   const leftWing = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(8 * zoom, 2 * zoom, 4 * zoom),
-    new THREE.MeshLambertMaterial({color: 0xffffff})
+    new THREE.BoxBufferGeometry(CHICKEN.LEFT_WING.WIDTH * zoom, CHICKEN.LEFT_WING.HEIGHT * zoom, CHICKEN.LEFT_WING.DEPTH * zoom),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
   );
-  leftWing.position.x = -8 * zoom;
-  leftWing.position.y = -1 * zoom;
-  leftWing.position.z = 12 * zoom;
-  leftWing.rotation.z = 0.3;
-  leftWing.castShadow = true;
-  leftWing.receiveShadow = false;
+  leftWing.position.set(CHICKEN.LEFT_WING.X * zoom, CHICKEN.LEFT_WING.Y * zoom, CHICKEN.LEFT_WING.Z * zoom);
+  leftWing.rotation.z = CHICKEN.LEFT_WING.ROT_Z;
+  group.leftWing = leftWing;
   group.add(leftWing);
 
   // Правое крыло
   const rightWing = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(8 * zoom, 2 * zoom, 4 * zoom),
-    new THREE.MeshLambertMaterial({color: 0xffffff})
+    new THREE.BoxBufferGeometry(CHICKEN.RIGHT_WING.WIDTH * zoom, CHICKEN.RIGHT_WING.HEIGHT * zoom, CHICKEN.RIGHT_WING.DEPTH * zoom),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
   );
-  rightWing.position.x = 8 * zoom;
-  rightWing.position.y = -1 * zoom;
-  rightWing.position.z = 12 * zoom;
-  rightWing.rotation.z = -0.3;
-  rightWing.castShadow = true;
-  rightWing.receiveShadow = false;
+  rightWing.position.set(CHICKEN.RIGHT_WING.X * zoom, CHICKEN.RIGHT_WING.Y * zoom, CHICKEN.RIGHT_WING.Z * zoom);
+  rightWing.rotation.z = CHICKEN.RIGHT_WING.ROT_Z;
+  group.rightWing = rightWing;
   group.add(rightWing);
 
   // Хвост
   const tail = new THREE.Mesh(
-    new THREE.BoxBufferGeometry(4 * zoom, 6 * zoom, 3 * zoom),
-    new THREE.MeshLambertMaterial({color: 0xffffff})
+    new THREE.BoxBufferGeometry(CHICKEN.TAIL.WIDTH * zoom, CHICKEN.TAIL.HEIGHT * zoom, CHICKEN.TAIL.DEPTH * zoom),
+    new THREE.MeshLambertMaterial({ color: 0xffffff })
   );
-  tail.position.y = -8 * zoom;
-  tail.position.z = 12 * zoom;
-  tail.castShadow = true;
-  tail.receiveShadow = false;
+  tail.position.set(CHICKEN.TAIL.X * zoom, CHICKEN.TAIL.Y * zoom, CHICKEN.TAIL.Z * zoom);
   group.add(tail);
 
   return group;
 }
+
 
 function Road() {
   const group = new THREE.Group();
@@ -1069,8 +1078,7 @@ function Lane(index) {
         this.billboard = billboard;
         this.trees.push(billboard);
         
-        // НЕ добавляем в occupiedPositions позиции слева/справа от столба
-        // Под щитом можно пройти!
+
       }
 
       // Создаем деревья (деревья мешают везде)
@@ -1320,13 +1328,13 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем, есть ли билборд на целевой позиции
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
-
+        console.log('Не могу двигаться вперед - билборд');
         return;
       }
       
       // Проверяем обычные деревья
       if(targetLane.occupiedPositions.has(newPosition.column)) {
-
+        console.log('Не могу двигаться вперед - дерево');
         return;
       }
     }
@@ -1340,12 +1348,12 @@ function move(direction) {
     if(targetLane.type === 'forest') {
       // Проверяем билборд
       if(targetLane.billboardData && targetLane.billboardData.pillarPosition === newPosition.column) {
-
+        console.log('Не могу двигаться назад - билборд');
         return;
       }
       
       if(targetLane.occupiedPositions.has(newPosition.column)) {
-
+        console.log('Не могу двигаться назад - дерево');
         return;
       }
     }
@@ -1361,12 +1369,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === leftColumn) {
-
+        console.log('Не могу двигаться влево - билборд');
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(leftColumn)) {
-
+        console.log('Не могу двигаться влево - дерево');
         return;
       }
     }
@@ -1382,12 +1390,12 @@ function move(direction) {
       
       // Проверяем билборд
       if(currentLaneObj.billboardData && currentLaneObj.billboardData.pillarPosition === rightColumn) {
-
+        console.log('Не могу двигаться вправо - билборд');
         return;
       }
       
       if(currentLaneObj.occupiedPositions.has(rightColumn)) {
-
+        console.log('Не могу двигаться вправо - дерево');
         return;
       }
     }
@@ -1395,7 +1403,7 @@ function move(direction) {
   }
 
   moves.push(direction);
-
+  console.log('Движение: ' + direction + ', moves: ' + moves.length);
 }
 
 // ============================
@@ -1403,7 +1411,9 @@ function move(direction) {
 // ============================
 
 function resetToStartScreen() {
-
+  console.log('Возврат к заставке. Причина:', 
+    gameOver ? 'Столкновение' : 
+    'Бездействие (' + (idleTimeout/1000) + ' секунд)');
   
   // Останавливаем все таймеры и интервалы
   if (autoMoveInterval) {
@@ -1462,13 +1472,13 @@ function animate(timestamp) {
     return;
   }
 
-  if (gameStarted && !gameOver && moves.length === 0 && !stepStartTimestamp) {
+  if (gameStarted && !gameOver && moves.length === 0 && !stepStartTimestamp && isDemoMode) {
     const currentTime = Date.now();
     
     // Проверяем время без движения, но только если курица действительно стоит
     // (stepStartTimestamp отсутствует, moves пустой)
     if (currentTime - lastMoveTime > idleTimeout) {
-
+      console.log('Бездействие более ' + (idleTimeout/1000) + ' секунд - показ заставки');
       resetToStartScreen();
       return;
     }
@@ -1512,13 +1522,16 @@ function animate(timestamp) {
     const jumpHeight = Math.sin(Math.pow(elapsed / stepTime, 0.1) * Math.PI) * 8 * zoom;
 
     // Анимация крыльев
+    const flapSpeed = 0.1; // скорость взмахов
+    const flapAmplitude = 0.8; // амплитуда взмахов (больше = сильнее)
+    const flapOffset = Math.sin(elapsed * flapSpeed) * flapAmplitude;
+
     if (jumpHeight > 2) {
-      const wingFlap = Math.sin(elapsed / 50) * 0.3;
-      if (chicken.children[3]) chicken.children[3].rotation.z = 0.3 + wingFlap;
-      if (chicken.children[4]) chicken.children[4].rotation.z = -0.3 - wingFlap;
+      chicken.leftWing.rotation.z = 0.3 + flapOffset;
+      chicken.rightWing.rotation.z = -0.3 - flapOffset;
     } else {
-      if (chicken.children[3]) chicken.children[3].rotation.z = 0.3;
-      if (chicken.children[4]) chicken.children[4].rotation.z = -0.3;
+      chicken.leftWing.rotation.z = 0.3 + flapOffset * 0.5;
+      chicken.rightWing.rotation.z = -0.3 - flapOffset * 0.5;
     }
 
     switch(moves[0]) {
@@ -1746,7 +1759,10 @@ window.addEventListener('resize', () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height);
-  camera.aspect = width / height;
+  camera.left   = -width / 2;
+  camera.right  =  width / 2;
+  camera.top    =  height / 2;
+  camera.bottom = -height / 2;
   camera.updateProjectionMatrix();
 });
 
@@ -1780,4 +1796,3 @@ document.addEventListener('DOMContentLoaded', () => {
   
   observer.observe(startScreen, { attributes: true });
 });
-
