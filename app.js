@@ -1025,12 +1025,7 @@ function Lane(index) {
         
         // Занята только позиция СТОЛБА (не весь билборд)
         this.occupiedPositions.add(billboardPosition);
-        if (billboardPosition > 0) {
-          this.occupiedPositions.add(billboardPosition - 1);
-        }
-        if (billboardPosition < columns - 1) {
-          this.occupiedPositions.add(billboardPosition + 1);
-        }
+        
 
         // Создаем щит
         const billboard = new Billboard();
@@ -1768,4 +1763,5 @@ document.addEventListener('DOMContentLoaded', () => {
   
   observer.observe(startScreen, { attributes: true });
 });
+
 
