@@ -236,6 +236,20 @@ footer p {
 
 /* Планшеты: ширина 481px - 768px - показываем кнопки */
 @media (max-width: 768px) and (min-width: 481px) {
+  .end-content {
+    font-size: 12px !important;
+    padding: 15px !important;
+    max-height: 80vh !important;
+  }
+  
+  .end-content h2 {
+    font-size: 18px !important;
+  }
+  
+  #retry {
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+  }
   .controls-grid {
     display: grid; /* Показываем кнопки */
   }
@@ -259,6 +273,20 @@ footer p {
 
 /* Мобильные: ширина до 480px - показываем кнопки */
 @media (max-width: 480px) {
+  .end-content {
+    padding: 10px !important;
+    font-size: 11px !important;
+    max-height: 75vh !important;
+  }
+  
+  .end-content h2 {
+    font-size: 16px !important;
+  }
+  
+  #retry {
+    padding: 8px 15px !important;
+    font-size: 13px !important;
+  }
   .controls-grid {
     display: grid; /* Показываем кнопки */
   }
